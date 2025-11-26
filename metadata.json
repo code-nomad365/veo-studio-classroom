@@ -1,6 +1,6 @@
 {
-  "name": "模擬血液的奇妙旅程",
-  "description": "Describe any scene and get a stunning video in seconds. An effortless video generator powered by Veo.",
+  "name": "Veo Studio - Classroom Edition",
+  "description": "A classroom-themed educational video generator powered by Veo. Features an immersive chalkboard interface, persistent video history storage with IndexedDB, and a complete learning environment for teachers to create stunning educational videos. Includes Class Records for managing video history.",
   "requestFramePermissions": [],
   "prompt": ""
 }
