@@ -7,6 +7,7 @@ import {
   ArrowDown,
   ArrowRight,
   Baseline,
+  BookOpen,
   ChevronDown,
   Film,
   Image,
@@ -26,6 +27,10 @@ const defaultProps = {
 
 export const KeyIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <KeyRound {...defaultProps} {...props} />
+);
+
+export const BookOpenIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <BookOpen {...defaultProps} {...props} />
 );
 
 export const ArrowPathIcon: React.FC<React.SVGProps<SVGSVGElement>> = (

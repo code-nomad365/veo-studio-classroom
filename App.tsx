@@ -5,11 +5,13 @@
 import {Video} from '@google/genai';
 import React, {useCallback, useEffect, useState} from 'react';
 import ApiKeyDialog from './components/ApiKeyDialog';
-import {CurvedArrowDownIcon} from './components/icons';
+import HistoryDialog from './components/HistoryDialog';
+import {BookOpenIcon, CurvedArrowDownIcon} from './components/icons';
 import LoadingIndicator from './components/LoadingIndicator';
 import PromptForm from './components/PromptForm';
 import VideoResult from './components/VideoResult';
 import {generateVideo} from './services/geminiService';
+import {saveVideo, StoredVideo} from './services/videoStorageService';
 import {
   AppState,
   GenerateVideoParams,
@@ -28,6 +30,7 @@ const App: React.FC = () => {
   const [lastVideoObject, setLastVideoObject] = useState<Video | null>(null);
   const [lastVideoBlob, setLastVideoBlob] = useState<Blob | null>(null);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
 
   const [initialFormValues, setInitialFormValues] =
     useState<GenerateVideoParams | null>(null);
@@ -80,6 +83,10 @@ const App: React.FC = () => {
 
     try {
       const {objectUrl, blob, video} = await generateVideo(params);
+      
+      // Auto-save to history
+      await saveVideo(params, blob, video);
+
       setVideoUrl(objectUrl);
       setLastVideoBlob(blob);
       setLastVideoObject(video);
@@ -133,6 +140,10 @@ const App: React.FC = () => {
   };
 
   const handleNewVideo = useCallback(() => {
+    // Cleanup old URL to avoid memory leaks
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+    }
     setAppState(AppState.IDLE);
     setVideoUrl(null);
     setErrorMessage(null);
@@ -140,7 +151,7 @@ const App: React.FC = () => {
     setLastVideoObject(null);
     setLastVideoBlob(null);
     setInitialFormValues(null);
-  }, []);
+  }, [videoUrl]);
 
   const handleTryAgainFromError = useCallback(() => {
     if (lastConfig) {
@@ -184,6 +195,22 @@ const App: React.FC = () => {
     }
   }, [lastConfig, lastVideoBlob, lastVideoObject]);
 
+  const handleLoadFromHistory = useCallback((storedVideo: StoredVideo) => {
+    // Cleanup previous
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+    }
+
+    const newObjectUrl = URL.createObjectURL(storedVideo.blob);
+    setVideoUrl(newObjectUrl);
+    setLastVideoBlob(storedVideo.blob);
+    setLastConfig(storedVideo.params);
+    setLastVideoObject(storedVideo.videoObject || null);
+    
+    setShowHistoryDialog(false);
+    setAppState(AppState.SUCCESS);
+  }, [videoUrl]);
+
   const renderError = (message: string) => (
     <div className="text-center bg-[#fffdf0] border-4 border-red-300 p-8 rounded-lg shadow-[0_4px_0_rgb(252,165,165)] rotate-1 max-w-lg mx-auto mt-8">
       <h2 className="text-3xl font-bold text-red-700 mb-4">Correction Needed!</h2>
@@ -202,18 +229,47 @@ const App: React.FC = () => {
         <ApiKeyDialog onContinue={handleApiKeyDialogContinue} />
       )}
       
+      {showHistoryDialog && (
+        <HistoryDialog 
+          onClose={() => setShowHistoryDialog(false)} 
+          onSelect={handleLoadFromHistory}
+        />
+      )}
+      
       {/* Blackboard Header */}
       <header className="relative z-20 bg-[#2f4f4f] border-b-[12px] border-[#5d4037] shadow-lg pt-8 pb-6 px-4">
         {/* Chalk tray effect */}
-        <div className="max-w-4xl mx-auto flex flex-col items-center">
+        <div className="max-w-4xl mx-auto flex flex-col items-center relative">
+          
           <div className="border-b-2 border-dashed border-white/30 pb-2 mb-2 w-full max-w-md text-center">
              <h1 className="text-5xl md:text-7xl font-bold text-[#f5f5f5] tracking-widest drop-shadow-md" style={{ fontFamily: '"Patrick Hand", cursive' }}>
               Veo Studio
             </h1>
           </div>
           <p className="text-[#a5d6a7] text-xl font-medium tracking-wide">Classroom Edition</p>
+
+          {/* History Button (Absolute positioned on desktop, static on mobile) */}
+          <button 
+            onClick={() => setShowHistoryDialog(true)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 md:translate-y-0 hidden md:flex flex-col items-center gap-1 group"
+            aria-label="Class Records"
+          >
+             <div className="bg-[#5d4037] p-2 rounded-lg border-2 border-[#8d6e63] shadow-md group-hover:scale-105 transition-transform">
+               <BookOpenIcon className="w-8 h-8 text-[#fff9c4]" />
+             </div>
+             <span className="text-[#a5d6a7] text-sm font-bold opacity-80 group-hover:opacity-100">Records</span>
+          </button>
         </div>
       </header>
+
+      {/* Mobile History Button (Floating) */}
+      <button 
+          onClick={() => setShowHistoryDialog(true)}
+          className="md:hidden fixed bottom-6 right-6 z-50 bg-[#5d4037] text-[#fff9c4] p-4 rounded-full shadow-xl border-4 border-[#8d6e63] hover:scale-110 transition-transform"
+          aria-label="Open History"
+      >
+        <BookOpenIcon className="w-6 h-6" />
+      </button>
 
       <main className="w-full max-w-5xl mx-auto flex-grow flex flex-col p-4 md:p-8 relative z-10">
         
