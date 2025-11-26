@@ -17,6 +17,7 @@ export interface StoredVideo {
 const DB_NAME = 'VeoClassroomDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'videos';
+const LAST_VIDEO_KEY = 'veo_last_video_id';
 
 // Helper to open the IndexedDB
 const openDB = (): Promise<IDBDatabase> => {
@@ -67,7 +68,15 @@ export const saveVideo = async (
     const store = tx.objectStore(STORE_NAME);
     const request = store.add(video);
 
-    request.onsuccess = () => resolve(video);
+    request.onsuccess = () => {
+      // Save the ID to localStorage for session persistence
+      try {
+        localStorage.setItem(LAST_VIDEO_KEY, id);
+      } catch (e) {
+        console.warn('Failed to save last video ID to localStorage', e);
+      }
+      resolve(video);
+    };
     request.onerror = () => reject(request.error);
   });
 };
@@ -99,4 +108,12 @@ export const getVideo = async (id: string): Promise<StoredVideo | undefined> => 
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+};
+
+export const getLastVideoId = (): string | null => {
+  return localStorage.getItem(LAST_VIDEO_KEY);
+};
+
+export const clearLastVideoId = (): void => {
+  localStorage.removeItem(LAST_VIDEO_KEY);
 };

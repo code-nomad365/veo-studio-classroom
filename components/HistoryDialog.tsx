@@ -64,10 +64,9 @@ const HistoryDialog: React.FC<HistoryDialogProps> = ({ onClose, onSelect }) => {
                   </div>
                   <div className="flex-grow">
                     <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#8d6e63]">
-                        {new Date(video.timestamp).toLocaleString(undefined, {
-                          year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                        })}
+                      {/* ISO Date Format Display */}
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#8d6e63] font-mono">
+                        {video.timestamp}
                       </span>
                       <span className="text-xs font-mono bg-[#efebe9] px-2 py-0.5 rounded text-[#5d4037] border border-[#d7ccc8]">
                         {video.params.mode}

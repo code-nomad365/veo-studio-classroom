@@ -11,7 +11,13 @@ import LoadingIndicator from './components/LoadingIndicator';
 import PromptForm from './components/PromptForm';
 import VideoResult from './components/VideoResult';
 import {generateVideo} from './services/geminiService';
-import {saveVideo, StoredVideo} from './services/videoStorageService';
+import {
+  getLastVideoId,
+  getVideo,
+  saveVideo,
+  StoredVideo,
+  clearLastVideoId
+} from './services/videoStorageService';
 import {
   AppState,
   GenerateVideoParams,
@@ -31,9 +37,37 @@ const App: React.FC = () => {
   const [lastVideoBlob, setLastVideoBlob] = useState<Blob | null>(null);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
 
   const [initialFormValues, setInitialFormValues] =
     useState<GenerateVideoParams | null>(null);
+
+  // Restore session from localStorage/IndexedDB
+  useEffect(() => {
+    const restoreSession = async () => {
+      const lastId = getLastVideoId();
+      if (lastId) {
+        try {
+          const storedVideo = await getVideo(lastId);
+          if (storedVideo) {
+            console.log('Restoring last session video:', storedVideo.id);
+            const newObjectUrl = URL.createObjectURL(storedVideo.blob);
+            setVideoUrl(newObjectUrl);
+            setLastVideoBlob(storedVideo.blob);
+            setLastConfig(storedVideo.params);
+            setLastVideoObject(storedVideo.videoObject || null);
+            setAppState(AppState.SUCCESS);
+          }
+        } catch (error) {
+          console.error('Failed to restore session:', error);
+          clearLastVideoId();
+        }
+      }
+      setIsRestoringSession(false);
+    };
+
+    restoreSession();
+  }, []);
 
   useEffect(() => {
     const checkApiKey = async () => {
@@ -84,7 +118,7 @@ const App: React.FC = () => {
     try {
       const {objectUrl, blob, video} = await generateVideo(params);
       
-      // Auto-save to history
+      // Auto-save to history and localStorage session
       await saveVideo(params, blob, video);
 
       setVideoUrl(objectUrl);
@@ -144,6 +178,7 @@ const App: React.FC = () => {
     if (videoUrl) {
       URL.revokeObjectURL(videoUrl);
     }
+    clearLastVideoId(); // Clear session
     setAppState(AppState.IDLE);
     setVideoUrl(null);
     setErrorMessage(null);
@@ -207,6 +242,11 @@ const App: React.FC = () => {
     setLastConfig(storedVideo.params);
     setLastVideoObject(storedVideo.videoObject || null);
     
+    // Update pointer to this video
+    try {
+      localStorage.setItem('veo_last_video_id', storedVideo.id);
+    } catch (e) {}
+
     setShowHistoryDialog(false);
     setAppState(AppState.SUCCESS);
   }, [videoUrl]);
@@ -222,6 +262,10 @@ const App: React.FC = () => {
       </button>
     </div>
   );
+
+  if (isRestoringSession) {
+    return <LoadingIndicator />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans overflow-x-hidden relative">
